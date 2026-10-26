@@ -1,0 +1,18 @@
+Curio Case — the quiet catalog for everything you collect.
+
+Enamel pins, vinyl, shells, coins, teapots, minis, ticket stubs — your collections live in boxes and drawers, not in someone else's cloud. Curio Case gives every collection its own shelf: items with photos, condition notes, a storage location you choose ("Studio > Shelf B > Tin 3"), tags, and custom fields that fit each hobby.
+
+WHAT IT DOES
+- Create unlimited collections, each with its own fields and templates
+- Add items in seconds: photo, name, condition, location, tags, optional notes and dates
+- Find anything instantly with search, tag filters, and sorting
+- Track where things live with a location tree and per-item move history
+- Watch your hobby grow with collection stats: counts, condition spread, acquisitions per year, and an optional declared-value total you enter yourself
+- Export a CSV catalog or a full JSON backup whenever you want, and restore it on any device you own
+
+PRIVACY BY DESIGN
+Curio Case makes zero network requests. There are no accounts, no subscriptions, no ads, no analytics, and no cloud. Camera and photo access are only asked for when you add a photo — and every feature works without photos. Your collection data belongs to you, on your devices.
+
+Works on phones, tablets, and Windows desktop with layouts and controls that feel native on each: iOS navigation, Material on Android, Fluent on Windows. Touch, keyboard, and mouse all supported.
+
+This description reflects the planned app; features ship incrementally with each release.
