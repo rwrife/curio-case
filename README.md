@@ -59,16 +59,27 @@ Hobby collectors usually track collections in a notes app, a spreadsheet, or mem
 
 ## Status and milestones
 
-Scaffold only: documentation, toolchain contract, and the generated store icon (`AppStore/icon.png`, 1024x1024 RGB via OpenAI Images `gpt-image-2.5-flare` through spark-media). No Flutter project, CI, or app code exists yet — that is issue #1.
+Flutter scaffold now builds from one codebase for Windows, Android, and iOS. Opening it shows only "Scaffold ready — no collections stored yet." No database, catalog, photos, or exports exist yet. The existing generated icon (`AppStore/icon.png`) is not wired into platform launchers until #7. Platform shell: Cupertino on iOS, Material 3 on Android, Fluent on Windows; full adaptive controls and goldens follow in #5.
 
 Milestones: M1 Flutter skeleton + Windows/Android CI → M2 domain + persistence → M3 item/collection workflow → M4 locations + stats → M5 platform-authentic adaptive UI → M6 backup/export → M7 Windows release workflow.
 
-## Quickstart (planned)
+## Quickstart
 
 ```
 flutter --version            # pinned 3.47.7 / Dart 3.13.5
-flutter create . --platforms=windows,android,ios   # issue #1 generates the skeleton
+flutter pub get --enforce-lockfile
+flutter analyze
 flutter test
-flutter build windows --release
-flutter build apk --debug    # Linux Docker lane
+flutter build windows --release   # Windows host or windows-latest CI
+flutter build apk --debug         # Android SDK on x64 Linux CI
 ```
+
+Host is ARM64 Linux; Windows compile requires Windows CI. Android build runs in x64 GitHub Actions container. iOS build requires a macOS runner and remains unverified until one is configured.
+
+## Working rules
+
+- Implement in Flutter (Windows + Android + iOS from one codebase); apps must run on phones, tablets, and desktop; Windows is the primary CI/release build and Android/iOS (incl. tablets) must keep compiling. No Unity, no native Swift/Xcode-only, no React Native, no Expo, no Kotlin Multiplatform, no .NET MAUI.
+- Follow PLATFORM-AUTHENTIC UX: never ship Material look on iOS, Cupertino look on Android, or phone-style UI on Windows/macOS; this repo uses strategy A (platform-native adaptive widgets: Cupertino / Material 3 / Fluent via an AdaptiveScaffold-type layer) and per-platform golden/widget tests must keep passing for TargetPlatform.iOS, TargetPlatform.android, TargetPlatform.windows.
+- Preserve the identifier prefix: Android applicationId, iOS bundle ID, and MSIX/Windows identity must use com.infinityball.curiocase (Windows identity cominfinityball.curiocase); never introduce a different prefix.
+- Maintain AppStore/description.txt as accurate listing copy and keep the real AppStore/icon.png generated via ~/.local/bin/spark-media (OpenAI Images) wired into every platform icon set; never substitute a placeholder or claim generation you did not verify; report blockers and leave the icon issue open. Icon brief: "analyze the repo and AppStore description to generate an icon that does not have any text or marketing, transparency, borders or corner radius. The image needs to be square, be edge-to-edge graphics and a modern colorful representation of the function provided by the app or game. If a logo or symbol is used, then there should be a gradient background or other abstract background behind the logo." (use ~/.local/bin/spark-media --project curio-case image --prompt "...").
+- The packaging/release issue must deliver .github/workflows/release.yml that builds the Windows release on windows-latest for v* tags/manual dispatch and attaches it to a GitHub release; never log secret values. iOS TestFlight (secret names ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8, ASC_TEAM_ID) and Play releases are later opt-in milestones.

@@ -1,0 +1,63 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - name: Flutter toolchain
+        run: flutter --version
+      - name: Resolve locked dependencies
+        run: flutter pub get --enforce-lockfile
+      - name: Format check
+        run: dart format --output=none --set-exit-if-changed lib test
+      - name: Analyze
+        run: flutter analyze
+      - name: Widget tests
+        run: flutter test
+      - name: Build Windows release
+        run: flutter build windows --release
+      - name: Verify portable build contents
+        shell: pwsh
+        run: |
+          $dir = 'build/windows/x64/runner/Release'
+          if (-not (Test-Path "$dir/curio_case.exe")) { throw 'Missing executable' }
+          if (-not (Test-Path "$dir/flutter_windows.dll")) { throw 'Missing Flutter runtime' }
+          if (-not (Test-Path "$dir/data/flutter_assets")) { throw 'Missing Flutter assets' }
+          Get-ChildItem $dir | Select-Object Name,Length
+      - uses: actions/upload-artifact@v4
+        with:
+          name: curio-case-windows-preview
+          path: build/windows/x64/runner/Release/
+          if-no-files-found: error
+
+  android:
+    runs-on: ubuntu-latest
+    container:
+      image: gmeligio/flutter-android:3.47.7
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Flutter toolchain
+        run: flutter --version
+      - name: Resolve locked dependencies
+        run: flutter pub get --enforce-lockfile
+      - name: Build Android debug APK
+        run: flutter build apk --debug
+      - name: Verify APK exists
+        run: test -s build/app/outputs/flutter-apk/app-debug.apk
