@@ -19,6 +19,7 @@ class _CatalogViewState extends State<CatalogView> {
   String condition = '';
   String? error;
   Widget? editor;
+  String? expandedItemId;
   bool busy = false;
   CatalogSession get session => widget.session;
   AdaptiveControls get ui => widget.controls;
@@ -135,6 +136,18 @@ class _CatalogViewState extends State<CatalogView> {
           for (final c in ItemCondition.values) c.name: c.name,
         }, (v) => setState(() => condition = v)),
         ui.button('Create collection', busy ? null : () => editCollection()),
+        if (session.collections.isNotEmpty) ...[
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Text('Collections', style: TextStyle(fontSize: 20)),
+          ),
+          for (final c in session.collections)
+            ui.button(
+              '${c.name} (${session.items.where((i) => i.collectionId == c.id).length})',
+              () => setState(() => collection = c.id),
+              key: Key('collection-${c.id}'),
+            ),
+        ],
         if (parent != null) ...[
           ui.button(
             'Edit collection',
@@ -194,7 +207,15 @@ class _CatalogViewState extends State<CatalogView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.name, style: const TextStyle(fontSize: 20)),
+                    ui.button(
+                      item.name,
+                      () => setState(
+                        () => expandedItemId = expandedItemId == item.id
+                            ? null
+                            : item.id,
+                      ),
+                      key: Key('item-${item.id}'),
+                    ),
                     Text(
                       '${session.collections.firstWhere((c) => c.id == item.collectionId).name} · ${item.condition.name}',
                     ),
@@ -204,6 +225,27 @@ class _CatalogViewState extends State<CatalogView> {
                           ? 'No photo'
                           : '${item.photoRefs.length} photo(s)',
                     ),
+                    if (expandedItemId == item.id) ...[
+                      if (item.notes.isNotEmpty) Text(item.notes),
+                      if (item.acquiredAt != null)
+                        Text(
+                          'Acquired: ${item.acquiredAt!.toIso8601String().substring(0, 10)}',
+                        ),
+                      if (item.declaredValueMinor != null)
+                        Text(
+                          'Declared value: ${item.declaredValueMinor! ~/ 100}.${(item.declaredValueMinor! % 100).toString().padLeft(2, '0')}',
+                        ),
+                      for (final entry in item.customFields.entries)
+                        Text('${entry.key}: ${entry.value}'),
+                      for (final ref in item.photoRefs)
+                        Image.file(
+                          session.photos.file(ref),
+                          height: 160,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, _, _) =>
+                              const Text('Photo unavailable'),
+                        ),
+                    ],
                     Wrap(
                       spacing: 8,
                       children: [

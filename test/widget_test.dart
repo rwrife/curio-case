@@ -251,6 +251,10 @@ void main() {
           expect(session.items.single.acquiredAt, DateTime.utc(2024, 2, 29));
           expect(session.items.single.customFields, {'Mint': 'Denver'});
           expect(session.items.single.photoRefs, isEmpty);
+          await tap(tester, 'Penny');
+          expect(find.text('Family heirloom'), findsOneWidget);
+          expect(find.text('Mint: Denver'), findsOneWidget);
+          expect(find.text('Declared value: 12.34'), findsOneWidget);
           await tap(tester, 'Edit Penny');
           await enter(tester, 'Item name', 'Cent');
           await tap(tester, 'Save item');
