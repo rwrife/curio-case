@@ -1,18 +1,15 @@
-Curio Case — the quiet catalog for everything you collect.
+Curio Case — a private catalog for what you collect.
 
-Enamel pins, vinyl, shells, coins, teapots, minis, ticket stubs — your collections live in boxes and drawers, not in someone else's cloud. Curio Case gives every collection its own shelf: items with photos, condition notes, a storage location you choose ("Studio > Shelf B > Tin 3"), tags, and custom fields that fit each hobby.
+Organize pins, vinyl, shells, coins, miniatures, ticket stubs, and other collections on your own device.
 
-WHAT IT DOES
-- Create unlimited collections, each with its own fields and templates
-- Add items in seconds: photo, name, condition, location, tags, optional notes and dates
-- Find anything instantly with search, tag filters, and sorting
-- Track where things live with a location tree and per-item move history
-- Watch your hobby grow with collection stats: counts, condition spread, acquisitions per year, and an optional declared-value total you enter yourself
-- Export a CSV catalog or a full JSON backup whenever you want, and restore it on any device you own
+- Create, rename, and delete collections.
+- Define custom text fields for each collection.
+- Add and edit items with optional photos, condition, tags, notes, acquisition date, and a value you declare yourself.
+- Search item names, tags, notes, and custom fields across collections; filter by collection and condition.
+- Use the catalog without attaching any photos. Camera and gallery access are requested only when you choose to attach a photo.
 
-PRIVACY BY DESIGN
-Curio Case makes zero network requests. There are no accounts, no subscriptions, no ads, no analytics, and no cloud. Camera and photo access are only asked for when you add a photo — and every feature works without photos. Your collection data belongs to you, on your devices.
+Your catalog and imported photo copies stay in app-local storage. There are no accounts, cloud services, ads, or analytics, and the app makes no network requests. Declared values are your own records, not appraisals.
 
-Works on phones, tablets, and Windows desktop with layouts and controls that feel native on each: iOS navigation, Material on Android, Fluent on Windows. Touch, keyboard, and mouse all supported.
+Built with Flutter for phones, tablets, and Windows desktop, using Cupertino controls on iOS, Material controls on Android, and Fluent controls on Windows.
 
-This description reflects the planned app; features ship incrementally with each release.
+Backups, exports, location management, and collection dashboards are planned for later releases. Removing the app may remove its local catalog and photos.

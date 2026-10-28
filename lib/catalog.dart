@@ -67,9 +67,14 @@ final class CatalogItem {
     this.acquiredAt,
     this.notes = '',
     this.declaredValueMinor,
+    Map<String, String> customFields = const {},
   }) : location = location ?? LocationPath([]),
        photoRefs = List.unmodifiable(photoRefs),
-       tags = List.unmodifiable(tags) {
+       tags = List.unmodifiable(tags),
+       customFields = Map.unmodifiable(customFields) {
+    for (final key in customFields.keys) {
+      requireText(key, 'field name');
+    }
     requireText(id, 'item ID');
     requireText(collectionId, 'collection ID');
     requireText(name, 'item name');
@@ -96,6 +101,7 @@ final class CatalogItem {
 
   /// User-declared amount, not an appraisal. Currency is set by the caller.
   final int? declaredValueMinor;
+  final Map<String, String> customFields;
 }
 
 final class ItemMove {

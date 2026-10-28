@@ -13,14 +13,16 @@ final class CatalogStore {
       factory.openDatabase(
         path,
         options: OpenDatabaseOptions(
-          version: 2,
+          version: 3,
           onConfigure: (db) async => db.execute('PRAGMA foreign_keys = ON'),
           onCreate: (db, version) async {
             await _createV1(db);
             await _upgradeV2(db);
+            await _upgradeV3(db);
           },
           onUpgrade: (db, from, to) async {
             if (from < 2) await _upgradeV2(db);
+            if (from < 3) await _upgradeV3(db);
           },
         ),
       );
@@ -67,6 +69,12 @@ final class CatalogStore {
       'CREATE INDEX items_collection ON items(collection_id, name COLLATE NOCASE, id)',
     );
     await db.execute('CREATE INDEX moves_item ON moves(item_id, moved_at, id)');
+  }
+
+  static Future<void> _upgradeV3(DatabaseExecutor db) async {
+    await db.execute(
+      "ALTER TABLE items ADD COLUMN custom_fields TEXT NOT NULL DEFAULT '{}'",
+    );
   }
 
   Future<void> saveCollection(CollectionRecord collection) async {
@@ -146,6 +154,7 @@ final class CatalogStore {
     'acquired_at': item.acquiredAt?.toUtc().toIso8601String(),
     'notes': item.notes,
     'declared_value_minor': item.declaredValueMinor,
+    'custom_fields': jsonEncode(item.customFields),
   };
 
   CatalogItem _item(Map<String, Object?> row) => CatalogItem(
@@ -161,12 +170,15 @@ final class CatalogStore {
         : DateTime.parse(row['acquired_at'] as String),
     notes: row['notes'] as String,
     declaredValueMinor: row['declared_value_minor'] as int?,
+    customFields: (jsonDecode(row['custom_fields'] as String) as Map)
+        .cast<String, String>(),
   );
 
   Future<List<CatalogItem>> items({
     String? collectionId,
     ItemCondition? condition,
     String? nameContains,
+    String? search,
   }) async {
     final clauses = <String>[];
     final args = <Object?>[];
@@ -182,7 +194,7 @@ final class CatalogStore {
       clauses.add('instr(lower(name), lower(?)) > 0');
       args.add(nameContains);
     }
-    return [
+    final result = [
       for (final row in await db.query(
         'items',
         where: clauses.isEmpty ? null : clauses.join(' AND '),
@@ -191,6 +203,20 @@ final class CatalogStore {
       ))
         _item(row),
     ];
+    final query = search?.trim().toLowerCase() ?? '';
+    return query.isEmpty
+        ? result
+        : result
+              .where(
+                (item) => [
+                  item.name,
+                  item.notes,
+                  ...item.tags,
+                  ...item.customFields.keys,
+                  ...item.customFields.values,
+                ].any((value) => value.toLowerCase().contains(query)),
+              )
+              .toList();
   }
 
   Future<void> deleteItem(String id) async {
