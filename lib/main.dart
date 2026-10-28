@@ -1,42 +1,85 @@
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+
+import 'adaptive.dart';
+import 'catalog_session.dart';
+import 'catalog_view.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const CurioCaseApp());
 }
 
-/// Root widget. Issue #1 is scaffold-only: real data-backed screens arrive in
-/// #2/#3. The full adaptive layer lands in #5; until then iOS uses Cupertino
-/// and every other target uses Material 3 so nothing ships the wrong platform
-/// look. Widgets read [defaultTargetPlatform], never `dart:io`, so widget
-/// tests can pump every [TargetPlatform].
-class CurioCaseApp extends StatelessWidget {
-  const CurioCaseApp({super.key, this.platformOverride});
-
+class CurioCaseApp extends StatefulWidget {
+  const CurioCaseApp({super.key, this.platformOverride, this.session});
   final TargetPlatform? platformOverride;
+  final CatalogSession? session;
 
   @override
-  Widget build(BuildContext context) {
-    final platform = platformOverride ?? defaultTargetPlatform;
-    return switch (platform) {
-      TargetPlatform.iOS => const _CupertinoShell(),
-      TargetPlatform.windows => const _WindowsShell(),
-      _ => const _MaterialShell(), // ponytail: macOS/Linux shell pending #5.
-    };
-  }
+  State<CurioCaseApp> createState() => _CurioCaseAppState();
 }
 
-/// True while no persistence layer exists. Never a fake catalog record.
-const String scaffoldStatusMessage =
-    'Scaffold ready — no collections stored yet.';
-
-class _MaterialShell extends StatelessWidget {
-  const _MaterialShell();
+class _CurioCaseAppState extends State<CurioCaseApp> {
+  late Future<CatalogSession> session;
+  @override
+  void initState() {
+    super.initState();
+    session = widget.session != null
+        ? Future.value(widget.session)
+        : CatalogSession.open();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final platform = widget.platformOverride ?? defaultTargetPlatform;
+    final controls = AdaptiveControls(platform);
+    final home = FutureBuilder<CatalogSession>(
+      future: session,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Could not open the local catalog.'),
+                controls.button(
+                  'Retry',
+                  () => setState(() => session = CatalogSession.open()),
+                ),
+              ],
+            ),
+          );
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: Text('Opening catalog…'));
+        }
+        return CatalogView(session: snapshot.requireData, controls: controls);
+      },
+    );
+    if (controls.apple) {
+      return CupertinoApp(
+        title: 'Curio Case',
+        debugShowCheckedModeBanner: false,
+        home: CupertinoPageScaffold(
+          navigationBar: const CupertinoNavigationBar(
+            middle: Text('Curio Case'),
+          ),
+          child: SafeArea(child: home),
+        ),
+      );
+    }
+    if (controls.desktop) {
+      return fluent.FluentApp(
+        title: 'Curio Case',
+        debugShowCheckedModeBanner: false,
+        home: fluent.NavigationView(
+          titleBar: const fluent.TitleBar(title: Text('Curio Case')),
+          content: home,
+        ),
+      );
+    }
     return MaterialApp(
       title: 'Curio Case',
       debugShowCheckedModeBanner: false,
@@ -45,60 +88,7 @@ class _MaterialShell extends StatelessWidget {
       ),
       home: Scaffold(
         appBar: AppBar(title: const Text('Curio Case')),
-        body: const _ScaffoldStatus(),
-      ),
-    );
-  }
-}
-
-class _WindowsShell extends StatelessWidget {
-  const _WindowsShell();
-
-  @override
-  Widget build(BuildContext context) {
-    return fluent.FluentApp(
-      title: 'Curio Case',
-      home: fluent.NavigationView(
-        titleBar: const fluent.TitleBar(title: Text('Curio Case')),
-        content: const _ScaffoldStatus(),
-      ),
-    );
-  }
-}
-
-class _CupertinoShell extends StatelessWidget {
-  const _CupertinoShell();
-
-  @override
-  Widget build(BuildContext context) {
-    return CupertinoApp(
-      title: 'Curio Case',
-      theme: const CupertinoThemeData(brightness: Brightness.light),
-      home: const CupertinoPageScaffold(
-        navigationBar: CupertinoNavigationBar(middle: Text('Curio Case')),
-        child: SafeArea(child: _ScaffoldStatus()),
-      ),
-    );
-  }
-}
-
-class _ScaffoldStatus extends StatelessWidget {
-  const _ScaffoldStatus();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 640),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            scaffoldStatusMessage,
-            key: const Key('scaffold-status'),
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 18),
-          ),
-        ),
+        body: home,
       ),
     );
   }

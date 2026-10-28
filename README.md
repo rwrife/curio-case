@@ -59,7 +59,11 @@ Hobby collectors usually track collections in a notes app, a spreadsheet, or mem
 
 ## Status and milestones
 
-Flutter scaffold now builds from one codebase for Windows, Android, and iOS. Opening it shows only "Scaffold ready — no collections stored yet." No database, catalog, photos, or exports exist yet. The existing generated icon (`AppStore/icon.png`) is not wired into platform launchers until #7. Platform shell: Cupertino on iOS, Material 3 on Android, Fluent on Windows; full adaptive controls and goldens follow in #5.
+The catalog now uses the existing SQLite domain/store on Windows, Android, and iOS. Create, rename, and delete collections; define collection-specific text fields; add, edit, and delete items with optional photos, condition, tags, notes, acquisition date, and declared value. Search covers item names, tags, notes, and custom fields across collections, with collection and condition filters. Select a collection to manage it or add items. Wide layouts use a filter sidebar; smaller windows scroll vertically. Controls use Cupertino on iOS/macOS, Material 3 on Android, and Fluent on Windows/Linux.
+
+Data lives in the application support directory. Photo attachment copies bytes into app-owned `photos/` files; SQLite stores only relative paths. Removing photos/items/collections removes unreferenced copies after the database change. Canceling an editor removes its newly imported photos. Permissions are requested only by an explicit attachment action; all catalog workflows work without photos. Camera capture is offered on mobile; Windows uses the gallery file picker. No application network, account, or telemetry code is present.
+
+Issue #7 still owns release packaging and icon provenance review. The existing `AppStore/icon.png` is preserved and wired into all Android, iOS, and Windows launcher sizes using `python3 tool/sync_icons.py` (Pillow required for this development tool only). Its original spark-media generation was not rerun or independently verified in this change; the icon/release issue remains open.
 
 Milestones: M1 Flutter skeleton + Windows/Android CI → M2 domain + persistence → M3 item/collection workflow → M4 locations + stats → M5 platform-authentic adaptive UI → M6 backup/export → M7 Windows release workflow.
 

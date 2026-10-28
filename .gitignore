@@ -3,6 +3,7 @@
 .dart-tool/
 .packages
 build/
+android/.kotlin/
 .flutter-plugins
 .flutter-plugins-dependencies
 pubspec.lock.bak
