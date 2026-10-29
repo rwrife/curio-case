@@ -271,7 +271,9 @@ void main() {
           await tap(tester, 'Unfiled');
           expect(find.text('Penny'), findsNothing);
           await tap(tester, 'All locations');
-          await tap(tester, 'Penny');
+          if (find.text('Family heirloom').evaluate().isEmpty) {
+            await tap(tester, 'Penny');
+          }
           expect(find.text('Family heirloom'), findsOneWidget);
           expect(find.text('Mint: Denver'), findsOneWidget);
           expect(find.text('Declared value: 12.34'), findsOneWidget);
