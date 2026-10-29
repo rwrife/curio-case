@@ -71,6 +71,7 @@ void main() {
       CatalogItem(id: 'old', collectionId: 'a', name: 'Legacy'),
     );
     await db.execute('ALTER TABLE items DROP COLUMN custom_fields');
+    await db.execute('DROP TABLE locations');
     await db.execute('PRAGMA user_version = 2');
     await db.close();
     db = await CatalogStore.open(factory, path);

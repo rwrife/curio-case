@@ -86,6 +86,16 @@ class CatalogSession extends ChangeNotifier {
     await reload();
   }
 
+  Future<void> createLocation(String collectionId, LocationPath path) async {
+    await store.createLocation(collectionId, path);
+    notifyListeners();
+  }
+
+  Future<void> moveItem(CatalogItem item, LocationPath path) async {
+    await store.moveItem(item.id, path, DateTime.now().toUtc());
+    await reload();
+  }
+
   Future<void> saveItem(CatalogItem item, {required bool isNew}) async {
     final old = items.where((value) => value.id == item.id).firstOrNull;
     if (isNew) {

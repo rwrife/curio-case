@@ -113,6 +113,85 @@ void main() {
     },
   );
 
+  test(
+    'logical location tree, chronological moves, and exact minor-unit stats',
+    () async {
+      expect(LocationPath.parse(' Shelf / Box ').segments, ['Shelf', 'Box']);
+      expect(LocationPath.parse('').label, 'Unfiled');
+      expect(() => LocationPath.parse('Shelf / ../ Box'), throwsArgumentError);
+      expect(
+        LocationPath(['Shelf', 'Box']).isWithin(LocationPath(['Shelf'])),
+        isTrue,
+      );
+      expect(
+        LocationPath(['Shelfish']).isWithin(LocationPath(['Shelf'])),
+        isFalse,
+      );
+      final db = await CatalogStore.open(factory, inMemoryDatabasePath);
+      addTearDown(db.close);
+      final store = CatalogStore(db);
+      await store.saveCollection(CollectionRecord(id: 'c', name: 'C'));
+      await store.createLocation('c', LocationPath(['Shelf', 'Box']));
+      await store.createLocation('c', LocationPath(['Shelf', 'Box']));
+      expect((await store.locations('c')).map((p) => p.label), [
+        'Shelf',
+        'Shelf / Box',
+      ]);
+      await store.saveItem(
+        CatalogItem(
+          id: 'a',
+          collectionId: 'c',
+          name: 'Coin',
+          condition: ItemCondition.mint,
+          acquiredAt: DateTime.utc(2020),
+          declaredValueMinor: 199,
+        ),
+      );
+      await store.saveItem(
+        CatalogItem(
+          id: 'b',
+          collectionId: 'c',
+          name: 'Stamp',
+          condition: ItemCondition.poor,
+          acquiredAt: DateTime.utc(2020),
+        ),
+      );
+      await store.moveItem(
+        'a',
+        LocationPath(['Shelf']),
+        DateTime.utc(2024, 1, 1),
+      );
+      await store.moveItem(
+        'a',
+        LocationPath(['Shelf', 'Box']),
+        DateTime.utc(2024, 1, 2),
+      );
+      final moves = await store.moves('a');
+      expect(moves.map((m) => m.from.label), ['Unfiled', 'Shelf']);
+      expect(moves.map((m) => m.at), [
+        DateTime.utc(2024, 1, 1),
+        DateTime.utc(2024, 1, 2),
+      ]);
+      expect((await store.items()).first.location.label, 'Shelf / Box');
+      final stats = await store.statistics('c');
+      expect(
+        [
+          stats.itemCount,
+          stats.withDeclaredValue,
+          stats.withoutDeclaredValue,
+          stats.declaredTotalMinor,
+        ],
+        [2, 1, 1, 199],
+      );
+      expect(stats.conditions[ItemCondition.mint], 1);
+      expect(stats.conditions[ItemCondition.unknown], 0);
+      expect(stats.acquisitionsByYear, {2020: 2});
+      expect(CollectionStatistics(<CatalogItem>[]).declaredTotalMinor, 0);
+      await store.deleteCollection('c');
+      expect(await store.locations('c'), isEmpty);
+    },
+  );
+
   test('v1 migration preserves data and adds defaults', () async {
     final path =
         '${await factory.getDatabasesPath()}/curio-migration-${DateTime.now().microsecondsSinceEpoch}.db';

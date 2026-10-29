@@ -251,7 +251,29 @@ void main() {
           expect(session.items.single.acquiredAt, DateTime.utc(2024, 2, 29));
           expect(session.items.single.customFields, {'Mint': 'Denver'});
           expect(session.items.single.photoRefs, isEmpty);
+          expect(find.text('Items: 1'), findsOneWidget);
+          expect(
+            find.text('Declared total (user-entered, not appraisal): 12.34'),
+            findsOneWidget,
+          );
+          expect(find.text('Missing declared value: 0 of 1'), findsOneWidget);
+          await enter(tester, 'New location path (Shelf / Box)', 'Shelf / Box');
+          await tap(tester, 'Create location');
+          await settle(tester);
+          expect(find.text('Browse Shelf / Box'), findsOneWidget);
           await tap(tester, 'Penny');
+          await enter(tester, 'Move to path (Shelf / Box)', 'Shelf / Box');
+          await tap(tester, 'Move Penny');
+          expect(find.text('Location: Shelf / Box'), findsOneWidget);
+          await tap(tester, 'Browse Shelf');
+          expect(find.text('Showing: Shelf'), findsOneWidget);
+          expect(find.text('Penny'), findsOneWidget);
+          await tap(tester, 'Unfiled');
+          expect(find.text('Penny'), findsNothing);
+          await tap(tester, 'All locations');
+          if (find.text('Family heirloom').evaluate().isEmpty) {
+            await tap(tester, 'Penny');
+          }
           expect(find.text('Family heirloom'), findsOneWidget);
           expect(find.text('Mint: Denver'), findsOneWidget);
           expect(find.text('Declared value: 12.34'), findsOneWidget);

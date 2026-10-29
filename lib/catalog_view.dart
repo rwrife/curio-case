@@ -15,7 +15,10 @@ class CatalogView extends StatefulWidget {
 
 class _CatalogViewState extends State<CatalogView> {
   final search = TextEditingController();
+  final locationInput = TextEditingController();
+  final moveInput = TextEditingController();
   String collection = '';
+  LocationPath? locationFilter;
   String condition = '';
   String? error;
   Widget? editor;
@@ -35,6 +38,7 @@ class _CatalogViewState extends State<CatalogView> {
       setState(() {
         if (!session.collections.any((c) => c.id == collection)) {
           collection = '';
+          locationFilter = null;
         }
       });
     }
@@ -44,6 +48,8 @@ class _CatalogViewState extends State<CatalogView> {
   void dispose() {
     session.removeListener(refresh);
     search.dispose();
+    locationInput.dispose();
+    moveInput.dispose();
     super.dispose();
   }
 
@@ -112,6 +118,10 @@ class _CatalogViewState extends State<CatalogView> {
         .where(
           (i) =>
               (collection.isEmpty || i.collectionId == collection) &&
+              (locationFilter == null ||
+                  (locationFilter!.segments.isEmpty
+                      ? i.location.segments.isEmpty
+                      : i.location.isWithin(locationFilter!))) &&
               (condition.isEmpty || i.condition.name == condition) &&
               (query.isEmpty ||
                   [
@@ -127,10 +137,19 @@ class _CatalogViewState extends State<CatalogView> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ui.field('Search items', search, onChanged: (_) => setState(() {})),
-        ui.choice(context, 'Collection filter', collection, {
-          '': 'All collections',
-          for (final c in session.collections) c.id: c.name,
-        }, (v) => setState(() => collection = v)),
+        ui.choice(
+          context,
+          'Collection filter',
+          collection,
+          {
+            '': 'All collections',
+            for (final c in session.collections) c.id: c.name,
+          },
+          (v) => setState(() {
+            collection = v;
+            locationFilter = null;
+          }),
+        ),
         ui.choice(context, 'Condition filter', condition, {
           '': 'All conditions',
           for (final c in ItemCondition.values) c.name: c.name,
@@ -144,7 +163,10 @@ class _CatalogViewState extends State<CatalogView> {
           for (final c in session.collections)
             ui.button(
               '${c.name} (${session.items.where((i) => i.collectionId == c.id).length})',
-              () => setState(() => collection = c.id),
+              () => setState(() {
+                collection = c.id;
+                locationFilter = null;
+              }),
               key: Key('collection-${c.id}'),
             ),
         ],
@@ -172,6 +194,74 @@ class _CatalogViewState extends State<CatalogView> {
                   },
           ),
           ui.button('Add item', busy ? null : () => editItem(parent)),
+          const Text('Locations', style: TextStyle(fontSize: 20)),
+          ui.field('New location path (Shelf / Box)', locationInput),
+          ui.button(
+            'Create location',
+            busy
+                ? null
+                : () async {
+                    try {
+                      final path = LocationPath.parse(locationInput.text);
+                      await action(
+                        () => session.createLocation(parent.id, path),
+                      );
+                      if (mounted && error == null) locationInput.clear();
+                    } on ArgumentError {
+                      setState(() => error = 'Enter a valid location path.');
+                    }
+                  },
+          ),
+          FutureBuilder<List<LocationPath>>(
+            future: session.store.locations(parent.id),
+            builder: (context, snapshot) => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ui.button(
+                  'All locations',
+                  () => setState(() => locationFilter = null),
+                ),
+                ui.button(
+                  'Unfiled',
+                  () => setState(() => locationFilter = LocationPath([])),
+                ),
+                for (final path in snapshot.data ?? <LocationPath>[])
+                  ui.button(
+                    'Browse ${path.label}',
+                    () => setState(() => locationFilter = path),
+                  ),
+                if (snapshot.hasError) const Text('Could not load locations.'),
+              ],
+            ),
+          ),
+          if (locationFilter != null) Text('Showing: ${locationFilter!.label}'),
+          const Text('Collection summary', style: TextStyle(fontSize: 20)),
+          Builder(
+            builder: (context) {
+              final stats = CollectionStatistics(
+                session.items
+                    .where((i) => i.collectionId == parent.id)
+                    .toList(),
+              );
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Items: ${stats.itemCount}'),
+                  Text(
+                    'Declared total (user-entered, not appraisal): ${stats.declaredTotalMinor ~/ 100}.${(stats.declaredTotalMinor % 100).toString().padLeft(2, '0')}',
+                  ),
+                  Text(
+                    'Missing declared value: ${stats.withoutDeclaredValue} of ${stats.itemCount}',
+                  ),
+                  for (final entry in stats.conditions.entries)
+                    Text('${entry.key.name}: ${entry.value}'),
+                  for (final year
+                      in stats.acquisitionsByYear.keys.toList()..sort())
+                    Text('Acquired $year: ${stats.acquisitionsByYear[year]}'),
+                ],
+              );
+            },
+          ),
         ],
         if (parent == null && session.collections.isNotEmpty)
           const Padding(
@@ -219,6 +309,7 @@ class _CatalogViewState extends State<CatalogView> {
                     Text(
                       '${session.collections.firstWhere((c) => c.id == item.collectionId).name} · ${item.condition.name}',
                     ),
+                    Text('Location: ${item.location.label}'),
                     if (item.tags.isNotEmpty) Text(item.tags.join(', ')),
                     Text(
                       item.photoRefs.isEmpty
@@ -226,6 +317,44 @@ class _CatalogViewState extends State<CatalogView> {
                           : '${item.photoRefs.length} photo(s)',
                     ),
                     if (expandedItemId == item.id) ...[
+                      ui.field('Move to path (Shelf / Box)', moveInput),
+                      ui.button(
+                        'Move ${item.name}',
+                        busy
+                            ? null
+                            : () async {
+                                try {
+                                  final path = LocationPath.parse(
+                                    moveInput.text,
+                                  );
+                                  await action(
+                                    () => session.moveItem(item, path),
+                                  );
+                                  if (mounted && error == null) {
+                                    moveInput.clear();
+                                  }
+                                } on ArgumentError {
+                                  setState(
+                                    () =>
+                                        error = 'Enter a valid location path.',
+                                  );
+                                }
+                              },
+                      ),
+                      FutureBuilder<List<ItemMove>>(
+                        future: session.store.moves(item.id),
+                        builder: (context, snapshot) => Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            for (final move in snapshot.data ?? <ItemMove>[])
+                              Text(
+                                'Moved ${move.at.toUtc().toIso8601String().substring(0, 10)}: ${move.from.label} → ${move.to.label}',
+                              ),
+                            if (snapshot.hasError)
+                              const Text('Could not load move history.'),
+                          ],
+                        ),
+                      ),
                       if (item.notes.isNotEmpty) Text(item.notes),
                       if (item.acquiredAt != null)
                         Text(

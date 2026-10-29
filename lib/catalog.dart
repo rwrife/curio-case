@@ -39,6 +39,20 @@ final class LocationPath {
 
   final List<String> segments;
 
+  /// Slash-separated logical path; never a filesystem path.
+  static LocationPath parse(String text) => LocationPath(
+    text.trim().isEmpty ? [] : text.split('/').map((part) => part.trim()),
+  );
+
+  String get label => segments.isEmpty ? 'Unfiled' : segments.join(' / ');
+
+  bool isWithin(LocationPath parent) =>
+      parent.segments.length <= segments.length &&
+      List.generate(
+        parent.segments.length,
+        (i) => i,
+      ).every((i) => segments[i] == parent.segments[i]);
+
   String toJson() => jsonEncode(segments);
   static LocationPath fromJson(String source) {
     final decoded = jsonDecode(source);
@@ -120,18 +134,49 @@ final class ItemMove {
 }
 
 final class CollectionStatistics {
-  const CollectionStatistics(
-    this.itemCount,
-    this.withDeclaredValue,
-    this.withoutDeclaredValue,
-    this.declaredTotalMinor,
-  );
+  CollectionStatistics(Iterable<CatalogItem> items)
+    : itemCount = items.length,
+      withDeclaredValue = items
+          .where((i) => i.declaredValueMinor != null)
+          .length,
+      withoutDeclaredValue = items
+          .where((i) => i.declaredValueMinor == null)
+          .length,
+      declaredTotalMinor = _total(items),
+      conditions = Map.unmodifiable({
+        for (final condition in ItemCondition.values)
+          condition: items.where((i) => i.condition == condition).length,
+      }),
+      acquisitionsByYear = Map.unmodifiable({
+        for (final year
+            in items
+                .where((i) => i.acquiredAt != null)
+                .map((i) => i.acquiredAt!.toUtc().year)
+                .toSet())
+          year: items.where((i) => i.acquiredAt?.toUtc().year == year).length,
+      });
+
   final int itemCount;
   final int withDeclaredValue;
   final int withoutDeclaredValue;
 
   /// Sum of user-declared minor units; never an appraisal.
   final int declaredTotalMinor;
+  final Map<ItemCondition, int> conditions;
+  final Map<int, int> acquisitionsByYear;
+
+  static int _total(Iterable<CatalogItem> items) {
+    var result = 0;
+    for (final item in items) {
+      final value = item.declaredValueMinor;
+      if (value == null) continue;
+      if (value > 9223372036854775807 - result) {
+        throw StateError('Declared total exceeds int64');
+      }
+      result += value;
+    }
+    return result;
+  }
 }
 
 void requireText(String value, String field) {
