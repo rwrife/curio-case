@@ -13,16 +13,18 @@ final class CatalogStore {
       factory.openDatabase(
         path,
         options: OpenDatabaseOptions(
-          version: 3,
+          version: 4,
           onConfigure: (db) async => db.execute('PRAGMA foreign_keys = ON'),
           onCreate: (db, version) async {
             await _createV1(db);
             await _upgradeV2(db);
             await _upgradeV3(db);
+            await _upgradeV4(db);
           },
           onUpgrade: (db, from, to) async {
             if (from < 2) await _upgradeV2(db);
             if (from < 3) await _upgradeV3(db);
+            if (from < 4) await _upgradeV4(db);
           },
         ),
       );
@@ -75,6 +77,49 @@ final class CatalogStore {
     await db.execute(
       "ALTER TABLE items ADD COLUMN custom_fields TEXT NOT NULL DEFAULT '{}'",
     );
+  }
+
+  static Future<void> _upgradeV4(DatabaseExecutor db) async {
+    await db.execute(
+      'CREATE TABLE locations (collection_id TEXT NOT NULL REFERENCES collections(id) ON DELETE CASCADE, path TEXT NOT NULL, PRIMARY KEY (collection_id, path))',
+    );
+  }
+
+  Future<void> createLocation(
+    String collectionId,
+    LocationPath location,
+  ) async {
+    requireText(collectionId, 'collection ID');
+    if (location.segments.isEmpty) {
+      throw ArgumentError.value(location, 'location');
+    }
+    await db.transaction((tx) async {
+      for (var depth = 1; depth <= location.segments.length; depth++) {
+        await tx.insert('locations', {
+          'collection_id': collectionId,
+          'path': LocationPath(location.segments.take(depth)).toJson(),
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      }
+    });
+  }
+
+  Future<List<LocationPath>> locations(String collectionId) async {
+    requireText(collectionId, 'collection ID');
+    final paths = <LocationPath>{
+      for (final row in await db.query(
+        'locations',
+        columns: ['path'],
+        where: 'collection_id = ?',
+        whereArgs: [collectionId],
+      ))
+        LocationPath.fromJson(row['path'] as String),
+    };
+    for (final item in await items(collectionId: collectionId)) {
+      for (var depth = 1; depth <= item.location.segments.length; depth++) {
+        paths.add(LocationPath(item.location.segments.take(depth)));
+      }
+    }
+    return paths.toList()..sort((a, b) => a.label.compareTo(b.label));
   }
 
   Future<void> saveCollection(CollectionRecord collection) async {
@@ -270,25 +315,7 @@ final class CatalogStore {
 
   Future<CollectionStatistics> statistics(String collectionId) async {
     requireText(collectionId, 'collection ID');
-    // ponytail: iterate minor units to catch int overflow; add currency grouping when multi-currency support exists.
-    final rows = await db.query(
-      'items',
-      columns: ['declared_value_minor'],
-      where: 'collection_id = ?',
-      whereArgs: [collectionId],
-    );
-    var count = 0;
-    var total = 0;
-    for (final row in rows) {
-      final value = row['declared_value_minor'] as int?;
-      if (value != null) {
-        if (value > 9223372036854775807 - total) {
-          throw StateError('Declared total exceeds int64');
-        }
-        total += value;
-        count++;
-      }
-    }
-    return CollectionStatistics(rows.length, count, rows.length - count, total);
+    // ponytail: amounts assume one user-chosen currency; group by currency if added.
+    return CollectionStatistics(await items(collectionId: collectionId));
   }
 }
