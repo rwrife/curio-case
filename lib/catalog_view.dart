@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'adaptive.dart';
@@ -15,6 +16,7 @@ class CatalogView extends StatefulWidget {
 
 class _CatalogViewState extends State<CatalogView> {
   final search = TextEditingController();
+  final searchFocus = FocusNode();
   final locationInput = TextEditingController();
   final moveInput = TextEditingController();
   String collection = '';
@@ -48,6 +50,7 @@ class _CatalogViewState extends State<CatalogView> {
   void dispose() {
     session.removeListener(refresh);
     search.dispose();
+    searchFocus.dispose();
     locationInput.dispose();
     moveInput.dispose();
     super.dispose();
@@ -136,7 +139,17 @@ class _CatalogViewState extends State<CatalogView> {
     final filters = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ui.field('Search items', search, onChanged: (_) => setState(() {})),
+        if (ui.desktop)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: Text('Ctrl+F search · Esc clears search'),
+          ),
+        ui.field(
+          'Search items',
+          search,
+          focusNode: searchFocus,
+          onChanged: (_) => setState(() {}),
+        ),
         ui.choice(
           context,
           'Collection filter',
@@ -413,7 +426,7 @@ class _CatalogViewState extends State<CatalogView> {
           ),
       ],
     );
-    return LayoutBuilder(
+    final content = LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth >= 900) {
           return Row(
@@ -443,6 +456,22 @@ class _CatalogViewState extends State<CatalogView> {
           ),
         );
       },
+    );
+    if (!ui.desktop) return content;
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyF, control: true): () =>
+            searchFocus.requestFocus(),
+        const SingleActivator(LogicalKeyboardKey.escape): () {
+          if (search.text.isNotEmpty) {
+            search.clear();
+            setState(() {});
+          } else {
+            searchFocus.unfocus();
+          }
+        },
+      },
+      child: Focus(autofocus: true, child: content),
     );
   }
 }

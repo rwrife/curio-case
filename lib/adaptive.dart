@@ -26,12 +26,14 @@ class AdaptiveControls {
     TextEditingController controller, {
     int lines = 1,
     ValueChanged<String>? onChanged,
+    FocusNode? focusNode,
   }) {
     final key = Key(label);
     final input = apple
         ? CupertinoTextField(
             key: key,
             controller: controller,
+            focusNode: focusNode,
             placeholder: label,
             maxLines: lines,
             onChanged: onChanged,
@@ -40,6 +42,7 @@ class AdaptiveControls {
         ? fluent.TextBox(
             key: key,
             controller: controller,
+            focusNode: focusNode,
             placeholder: label,
             maxLines: lines,
             onChanged: onChanged,
@@ -47,6 +50,7 @@ class AdaptiveControls {
         : TextField(
             key: key,
             controller: controller,
+            focusNode: focusNode,
             maxLines: lines,
             decoration: InputDecoration(
               labelText: label,
@@ -58,7 +62,13 @@ class AdaptiveControls {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [if (apple || desktop) Text(label), input],
+        children: [
+          if (apple || desktop) Text(label),
+          if (apple || desktop)
+            Semantics(label: label, child: input)
+          else
+            input,
+        ],
       ),
     );
   }
