@@ -57,6 +57,8 @@ jobs:
         run: flutter --version
       - name: Resolve locked dependencies
         run: flutter pub get --enforce-lockfile
+      - name: Check per-platform Linux goldens and adaptive widgets
+        run: flutter test test/adaptive_test.dart
       - name: Build Android debug APK
         run: flutter build apk --debug
       - name: Verify APK exists

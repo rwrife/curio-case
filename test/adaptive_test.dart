@@ -67,10 +67,14 @@ void main() {
           ),
           findsWidgets,
         );
-        await expectLater(
-          find.byType(CurioCaseApp),
-          matchesGoldenFile('goldens/${platform.name}-empty.png'),
-        );
+        // ponytail: Pixel goldens are renderer/OS-specific; Linux owns these baselines.
+        // Windows CI still exercises native widget/semantics checks below.
+        if (Platform.isLinux) {
+          await expectLater(
+            find.byType(CurioCaseApp),
+            matchesGoldenFile('goldens/${platform.name}-empty.png'),
+          );
+        }
         await tester.tap(find.text('Create collection'));
         await tester.pumpAndSettle();
         expect(find.text('Save collection'), findsOneWidget);
