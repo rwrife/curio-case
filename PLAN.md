@@ -73,4 +73,4 @@ lib/
 
 ## Privacy statement
 
-All user data stays in the app sandbox. No network permission is even requested on Android/iOS manifests. Export is user-initiated to a file the user chooses.
+Catalog data resides in app-private SQLite and photo files. No app network or telemetry requests. Android debug/profile manifests include Flutter development INTERNET permission; release manifest does not. User-initiated JSON backup and CSV export use native destination pickers; restore uses a native file picker and confirmation. Exported files leave the app sandbox at the user's chosen destination and can contain personal data/photos. JSON v1 restore validates before changing the DB; photo writes are rolled back on failure. Old unreferenced photos can persist after restore. Camera/gallery permission is requested only when attaching a photo.
