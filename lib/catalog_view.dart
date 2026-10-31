@@ -168,6 +168,37 @@ class _CatalogViewState extends State<CatalogView> {
           for (final c in ItemCondition.values) c.name: c.name,
         }, (v) => setState(() => condition = v)),
         ui.button('Create collection', busy ? null : () => editCollection()),
+        ui.button(
+          'Export JSON backup (with photos)',
+          busy
+              ? null
+              : () => action(() => session.exportJson(includePhotos: true)),
+        ),
+        ui.button(
+          'Export JSON backup (without photos)',
+          busy
+              ? null
+              : () => action(() => session.exportJson(includePhotos: false)),
+        ),
+        ui.button(
+          'Export CSV catalog',
+          busy ? null : () => action(session.exportCsv),
+        ),
+        ui.button(
+          'Restore JSON backup',
+          busy
+              ? null
+              : () async {
+                  if (!await ui.confirm(
+                    context,
+                    'Replace catalog?',
+                    'Import replaces every collection and item on this device. Export a backup first.',
+                  )) {
+                    return;
+                  }
+                  await action(session.importJson);
+                },
+        ),
         if (session.collections.isNotEmpty) ...[
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 8),

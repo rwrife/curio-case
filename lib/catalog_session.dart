@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -8,6 +10,7 @@ import 'package:sqflite/sqflite.dart' as mobile;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'catalog.dart';
+import 'catalog_backup.dart';
 import 'catalog_store.dart';
 
 String newCatalogId() =>
@@ -131,5 +134,39 @@ class CatalogSession extends ChangeNotifier {
     } on FileSystemException catch (error) {
       debugPrint('Photo cleanup deferred: ${error.osError?.errorCode}');
     }
+  }
+
+  Future<void> exportJson({required bool includePhotos}) async {
+    final payload = await CatalogBackup(
+      store,
+      photos.root,
+    ).exportJson(includePhotos: includePhotos);
+    await FilePicker.saveFile(
+      fileName: 'curio-case-backup.json',
+      bytes: Uint8List.fromList(utf8.encode(payload)),
+    );
+  }
+
+  Future<void> exportCsv() async {
+    final csv = CatalogBackup.exportCsv(collections, items);
+    await FilePicker.saveFile(
+      fileName: 'curio-case-catalog.csv',
+      bytes: Uint8List.fromList(utf8.encode(csv)),
+    );
+  }
+
+  Future<void> importJson() async {
+    final picked = await FilePicker.pickFile(
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+    );
+    if (picked == null) return;
+    final length = picked.lengthSync() ?? await picked.length();
+    if (length == null || length > 400 * 1024 * 1024) {
+      throw const FormatException('Backup too large or size unavailable');
+    }
+    final source = utf8.decode(await picked.readAsBytes());
+    await CatalogBackup(store, photos.root).restoreJson(source);
+    await reload();
   }
 }
