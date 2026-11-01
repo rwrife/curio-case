@@ -2,14 +2,13 @@ Curio Case — a private catalog for what you collect.
 
 Organize pins, vinyl, shells, coins, miniatures, ticket stubs, and other collections on your own device.
 
-- Create, rename, and delete collections.
-- Define custom text fields for each collection.
+- Create, rename, and delete collections; define custom text fields for each.
 - Add and edit items with optional photos, condition, tags, notes, acquisition date, and a value you declare yourself.
-- Search item names, tags, notes, and custom fields across collections; filter by collection and condition.
-- Use the catalog without attaching any photos. Camera and gallery access are requested only when you choose to attach a photo.
+- Search names, tags, notes, and custom fields across collections; filter by collection, condition, or storage location.
+- Define storage locations, log moves, and view collection counts and condition breakdowns.
+- Export a versioned JSON backup (with or without photos) or a CSV catalog; import a JSON backup to replace the local catalog after confirmation.
+- Use the catalog without photos. Camera and gallery access are requested only when you choose to attach one.
 
-Your catalog and imported photo copies stay in app-local storage. There are no accounts, cloud services, ads, or analytics, and the app makes no network requests. Declared values are your own records, not appraisals.
+Your catalog and imported photo copies stay in app-local storage. Backups and CSV files are saved only to paths you select; keep them private. There are no accounts, cloud services, ads, or analytics, and the app makes no network requests. Declared values are your own records, not appraisals.
 
-Built with Flutter for phones, tablets, and Windows desktop, using Cupertino controls on iOS, Material controls on Android, and Fluent controls on Windows.
-
-Backups, exports, location management, and collection dashboards are planned for later releases. Removing the app may remove its local catalog and photos.
+Built with Flutter for phones, tablets, and Windows desktop, using Cupertino controls on iOS, Material controls on Android, and Fluent controls on Windows. Removing the app may remove its local catalog and photos.

@@ -62,7 +62,7 @@ lib/
 - Primary: `.github/workflows/release.yml` on `v*` tag or manual dispatch → `windows-latest` → `flutter build windows --release` → zipped portable build attached to a GitHub release (MSIX optional later, identity `cominfinityball.curiocase`).
 - Android debug build stays green in CI (`flutter build apk --debug`); Play submission is a later opt-in milestone.
 - iOS: compile checks later on a macOS runner using Actions secret names `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`, `ASC_TEAM_ID`; TestFlight submission is a later opt-in milestone, never required for MVP.
-- Store copy lives in `AppStore/description.txt`; icon is the generated `AppStore/icon.png` wired via `flutter_launcher_icons` (Android/iOS) and the Windows runner `.ico` resource.
+- Store copy lives in `AppStore/description.txt`; icon is the generated `AppStore/icon.png` wired via `python3 tool/sync_icons.py` (Android/iOS launchers and Windows runner `.ico` resource). Run `python3 tool/sync_icons.py --check` to verify all icon sizes match.
 
 ## Risks
 

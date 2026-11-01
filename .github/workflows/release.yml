@@ -1,0 +1,84 @@
+name: Windows release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/release.yml'
+      - 'AppStore/**'
+      - 'windows/**'
+      - 'lib/**'
+      - 'pubspec.*'
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter build windows --release
+      - name: Package and inspect portable Windows build
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dir = 'build/windows/x64/runner/Release'
+          foreach ($required in @('curio_case.exe', 'flutter_windows.dll', 'data/flutter_assets')) {
+            if (-not (Test-Path (Join-Path $dir $required))) { throw "Missing build content: $required" }
+          }
+          $zip = 'curio-case-windows-x64.zip'
+          Compress-Archive -Path "$dir/*" -DestinationPath $zip
+          Add-Type -AssemblyName System.IO.Compression
+          $archive = [System.IO.Compression.ZipFile]::OpenRead((Join-Path (Get-Location) $zip))
+          try {
+            $names = @($archive.Entries | ForEach-Object FullName)
+            foreach ($required in @('curio_case.exe', 'flutter_windows.dll')) {
+              if ($required -notin $names) { throw "Missing archive content: $required" }
+            }
+            if (-not ($names | Where-Object { $_ -like 'data/flutter_assets/*' })) {
+              throw 'Missing archived Flutter assets'
+            }
+            "Archive: $zip ($((Get-Item $zip).Length) bytes, $($names.Count) entries)"
+          } finally { $archive.Dispose() }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: curio-case-windows-x64
+          path: curio-case-windows-x64.zip
+          if-no-files-found: error
+      - name: Publish tagged release
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:GITHUB_REF_TYPE -ne 'tag' -or $env:GITHUB_REF_NAME -notmatch '^v[^/]+$') {
+            throw 'Manual releases must dispatch from a v* tag; no branch release allowed.'
+          }
+          $tag = $env:GITHUB_REF_NAME
+          gh release view $tag --json tagName *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag curio-case-windows-x64.zip --clobber
+          } else {
+            gh release create $tag curio-case-windows-x64.zip --verify-tag --title "Curio Case $tag" --generate-notes
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'GitHub release upload failed' }
+          $assets = @(gh release view $tag --json assets --jq '.assets[].name')
+          if ($LASTEXITCODE -ne 0 -or 'curio-case-windows-x64.zip' -notin $assets) {
+            throw 'Release archive not found on GitHub release'
+          }
+          "Published $tag / curio-case-windows-x64.zip"
+    permissions:
+      contents: write
