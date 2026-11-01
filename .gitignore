@@ -20,6 +20,10 @@ Thumbs.db
 # Test / coverage artifacts
 coverage/
 
+# Python
+__pycache__/
+*.pyc
+
 # Local signing material (never commit)
 *.p8
 *.p12
